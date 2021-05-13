@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>PIC 3.0</title>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+		<script>
+
+			var AAP = 13000004;
+			var HOST_ASO;
+			var IV_USER;
+			var IV_TICKET;
+			var TSEC;
+			var HOST_CELLS;
+			var DNI;
+			var CUSTOMER;
+			var ERROR ;
+
+			function getURLParam(sParam){
+				let sPageURL = window.location.search.substring(1);
+				let sURLVariables = sPageURL.split('&');
+				for (let i = 0; i < sURLVariables.length; i++) {
+					let sParameterName = sURLVariables[i].split('=');
+					if (sParameterName[0] == sParam)
+						return sParameterName[1];
+				}
+				return null;
+			}
+			
+
+			async function generateTsec() {
+				let body = {
+					authentication:{
+						consumerID: AAP,
+						userID: IV_USER,
+						authenticationType: "00",
+						authenticationData: [
+							{ idAuthenticationData: "iv_ticketService", authenticationData: [IV_TICKET] }
+						]
+					},
+					backendUserRequest:{userId:"",accessCode:"",dialogId:""}
+				};
+
+				let promise = new Promise(function (resolve, reject) {
+					$.ajax({
+						url : HOST_ASO + '/TechArchitecture/pe/grantingTicket/V02',
+						type : "POST",
+						data: JSON.stringify(body),
+						contentType: 'application/json',
+						dataType: 'json',
+						success: function(data, textStatus, jqXHR) {
+							resolve(jqXHR.getResponseHeader('tsec'));
+						},
+						error: function( jqXHR, textStatus, errorThrown){
+							reject(jqXHR.responseJSON);
+						}
+					});
+				});
+
+				try {
+					TSEC = await promise;
+					console.log('tsec: ', TSEC);
+				} catch(error){
+					console.log('error tsec: ', error);
+					new Exception(error);
+				}
+			}
+
+			
+			async function getClientData() {
+				let url = `${HOST_ASO}/customers/v0/customers?documentTypeId=DNI&documentNumber=${DNI}`
+				let promise = new Promise(function (resolve, reject) {
+					$.ajax({
+						url : url,
+						type : "GET",
+						dataType: 'json',
+						headers: { tsec: TSEC },
+						success: function(data, textStatus, jqXHR) {
+							resolve(data);
+						},
+						error: function( jqXHR, textStatus, errorThrown){
+							reject(jqXHR.responseJSON);
+						}
+					});
+				});
+
+				try {
+					let list = await promise;
+					console.log('client Data: ', list);
+					return list.data[0];
+				} catch(error){
+					console.log('error client Data: ', error);
+					new Exception('Error al obtener Datos de Cliente');
+				}
+			}
+
+
+			function parseCustomerData(customerTemp){
+				return {
+					"tipoPersona": "F",
+					"codigoCentral": customerTemp.customerId,
+					"tipoDOI": "L",
+					"dscTipoDOI": "DNI",
+					"numeroDOI": DNI,
+					"nombres": customerTemp.firstName,
+					"apellidoPaterno": customerTemp.lastName,
+					"apellidoMaterno": customerTemp.surnames,
+					"nombreDePresentacion": `${customerTemp.firstName} ${customerTemp.lastName} ${customerTemp.surnames}`
+				};
+			}
+
+			async function onClickBtnGetCustomer(event){
+				HOST_ASO = document.querySelector('#hostASO').value;
+				HOST_CELLS = document.querySelector('#hostCells').value;
+				IV_USER = document.querySelector('#ivUser').value;
+				IV_TICKET = document.querySelector('#ivTicket').value;
+				DNI = document.querySelector('#dni').value;
+				await generateTsec();
+				let customerTemp = await getClientData();
+				let customerPIC = parseCustomerData(customerTemp);
+				document.querySelector('#customer').value = JSON.stringify(customerPIC);
+			}
+
+			function onClickBtnLoadCells(event){
+				let customerPIC = document.querySelector('#customer').value;
+				CUSTOMER = JSON.parse(customerPIC);
+				document.querySelector('#iframeSeguros').src = HOST_CELLS + '/index.html?appId=SEGUROS_APP&iframeId=iframeSeguros&hostASO='+HOST_ASO;
+			}
+
+
+			function _receiveMessage(event) {
+				console.log('PICPGC_receiveMessage', event);
+				var {data, origin, source} = event
+				var data = data || {};
+				var type = data.type || '';
+				
+				var urlIframe = document.getElementById("iframeSeguros").src;
+				if(!urlIframe.startsWith(origin)){
+					console.error('DUMMY BNET::_receiveMessage : Origin not mapped.', origin);
+					return;					
+				}
+	
+				switch (type) {
+					case 'app-data-request':
+						sendSigInData(event);
+						break;
+					case 'new-tsec-request':
+						refreshTsec(event);
+						break;
+					default:
+						console.error('DUMMY BNET::_receiveMessage : Message type not mapped.', type);
+				}
+			}
+			
+			function sendSigInData(eventMessageReq){
+				let response = {
+					error: null,
+					user: { registro: IV_USER },
+					tsec: TSEC,
+					customer: CUSTOMER
+				};
+				sendMessageResponse(response, eventMessageReq);
+			}
+
+			async function refreshTsec(eventMessageReq) {
+				console.log('refreshTsec....');
+				try{
+					await generateTsec();
+					sendMessageResponse({tsec: TSEC}, eventMessageReq);
+				} catch(error) {
+					sendMessageResponse({error: error}, eventMessageReq);
+				}
+			}
+			
+			function sendMessageResponse(value, eventMessageReq) {
+				console.log('sendMessageResponse to source: ', value);
+				let newType = eventMessageReq.data.type;
+				if(newType.endsWith('-request')){
+					newType = newType.replace('-request', '');
+				}
+				newType = newType + '-response';
+				
+				let newValue = Object.assign({}, eventMessageReq.data.value, value);
+				delete newValue.origin;
+				let data = { type: newType, value: newValue };
+				eventMessageReq.source.postMessage(data, eventMessageReq.origin);
+			}
+			
+			window.addEventListener('message', _receiveMessage);
+
+			window.onload = function() {
+				let hostCells = document.location.href.replace('/resources/pages/pgc.html','');
+				document.querySelector('#hostCells').value = hostCells;
+			}
+
+		</script>
+		<style>
+			html, body {
+				margin: 0 !important;
+				height: 100%;
+				background-color: rgb(25, 115, 184);
+    			color: white;
+			}
+
+			button {
+				color: #004481;
+				background: white;
+				font-weight: bold;
+			}
+			
+			.iframe {
+				border: 1px solid darkblue;
+				width: calc(100vw - 2px);
+				height: calc(100vh - 110px);
+				background: white;
+			}
+
+			.rows {
+				display: flex;
+				flex-direction: column;
+				flex-wrap: nowrap;
+				margin-bottom: 5px;
+			}
+
+			.row {
+				display: flex;
+				flex-direction: row;
+				flex-wrap: nowrap;
+				padding-bottom: 5px;
+			}
+			.row.full input {
+				min-width: 800px;
+			}
+
+			.field {
+				min-width: 300px;
+			}
+
+		</style>
+	</head>
+	<body>
+		<div class="rows">
+			<div class="row">
+				<div class="field">
+					<label>Enviroment ASO:</label> 
+					<select id="hostASO" required>
+						<option value="https://tst.glomo.bbvacontinental.pe/SRVS_A02" select>TEST</option>
+						<option value="https://cal.glomo.bbvacontinental.pe/SRVS_A02" select selected>QA</option>
+					</select>
+				</div>
+				<div class="field">
+					<label>Host Cells:</label> <input type="text" id="hostCells" value="http://127.0.0.1:8001/dist" required/> 
+				</div>
+			</div>
+			<div class="row">
+				<div class="field">
+					<label>ivUser:</label> <input type="text" id="ivUser" value="pe.p121318" required/>
+				</div>
+				<div class="field">
+					<label>ivTicket:</label> <input type="text" id="ivTicket" value="iTM1hMBjei5BDWn9biDVarysHyWAoU/81vHOMBa/Oew/8EfyhjoswQ==" required/>
+				</div>
+				<div class="field">
+					<label>DNI:</label> <input type="text" id="dni" value="12345678"/>			
+				</div>
+				<div>
+					&nbsp; <button onclick="onClickBtnGetCustomer()">GET CUSTOMER</button>
+				</div>
+			</div>
+			<hr style="width: 99%">
+			<div class="row full">
+				<div>
+					<label>Customer Object:</label> <input type="text" id="customer" value=""/>
+				</div>
+				<div>
+					&nbsp; <button onclick="onClickBtnLoadCells()">LOAD INSURANCES</button>
+				</div>
+			</div>
+		</div>
+		<iframe id="iframeSeguros" class="iframe" scrolling="no" frameborder="0">
+	</body>
+</html>

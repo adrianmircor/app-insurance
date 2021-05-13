@@ -1,0 +1,23 @@
+{
+  "name": "app-insurance",
+  "description": "APP INSURANCE",
+  "main": "",
+  "authors": [
+    "Jose Matos <jose.matos.cix>"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "cells-app"
+  ],
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "cells-search-autocomplete": "^13.7.1"
+  }
+}

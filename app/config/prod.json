@@ -1,0 +1,127 @@
+{
+  "cells_properties": {
+    "deployEndpoint": "",
+    "i18nPath": "locales/",
+    "componentsPath": "./components/",
+    "composerEndpoint": "./composerMocks/",
+    "pagesPath": "./pages/",
+    "debug": true,
+    "mocks": true,
+    "coreCache": true,
+    "routerLog": false,
+    "cordovaScript" : "cordova.js",
+    "prplLevel": 1,
+    "initialBundle": ["dashboard"],
+    "transpile": true,
+    "transpileExclude": ["webcomponentsjs", "moment", "d3", "bgadp*"],
+    "enableLitElement": true,
+    "onlyLitElements": true,
+
+    "appId": "",
+    "iframeId": "",
+    "parentsOrigins": [
+      "https://cellspgc.bbva.pe", "https://revision-jvocrgu0.openweb.bbva"
+    ]
+  },
+  "app_properties": {
+    "config": {
+      "enviroment": "LOCAL",
+      "aso": {
+        "pageSize": 10,
+        "host": "https://aus-arqaso.work.pe.nextgen.igrupobbva:8050",
+        "services": {
+          "customers": {
+            "listContactsDetail": "customers/v0/customers/{customer-id}/contact-details"
+          },
+          "risks": {
+            "listRiskBlackListedEntities": "risks/v1/black-listed-entities?{query}"
+          },
+          "business_cryptography": {
+            "createCryptoDocument": "business-cryptography/v0/crypto-documents",
+            "cryptoKey": "pic-pe-mask-documentnumber"
+          },
+          "vehicles": {
+            "listVehicleBrands": "vehicles/v0/brands?name={brand}",
+            "listVehicleModels": "vehicles/v0/models?name={brand.name}&brand.id={brand.id}",
+            "getVehiclePrice": "vehicles/v0/prices?model.id={model.id}&model.brand.id={model.brand.id}&model.year={model.year}",
+            "getVehicle": "vehicles/v0/vehicles/{vehicle-id}"
+          }
+        },
+        "tsecExpired": {
+          "errorCodeAso": "68",
+          "errorCodeGabi": "unauthorized",
+          "maxRetries": 2
+        }
+      },
+      "products": [
+        {
+          "id": "830",
+          "title": "Seguro Vehicular",
+          "info": "BBVA y Rímac se unieron para brindar los siguientes beneficios a clientes del banco.",
+          "buttonName": "Cotizar",
+          "items": [
+            "Cubre atos de robo total.", "Cubre daños a terceros.",
+            "Cuenta con auxilio mecánico y traslado de grúa.",
+            "Descuento en gasolina Repsol.",
+            "Tenemos 3 planes de protección para el vehículo."
+          ],
+          "conditions":{
+              "title": "Valida las siguientes condiciones",
+              "subtitle": "Para cotizar y contratar este seguro confirma con el cliente las condiciones sobre su vehículo",
+              "listConditions": ["Uso exclusivamente particular (no para servicio de taxi).", "No tiene el timón cambiado."
+              ]
+          },
+          "vehicleInfo":{
+            "title":"Completa los datos del vehículo",
+            "enabled":true
+          }
+        }
+      ]
+    },
+    "ctts": {
+      "events": {
+        "INIT_LAUNCH_APP": "init-launch-app",
+        "VALIDATE_BLACK_LIST": "validate-black-list",
+        "TSEC_REQUEST": "new-tsec-request",
+        "SPINNER_GLOBAL": "spinner-global-event",
+        "ERROR_MODAL": "error-modal-event",
+        "SET_USER_DATA": "set-user-data",
+        "SEND_POSTMESSAGE": "send-postmessage",
+        "TSEC_RESPONSE": "new-tsec-response"
+      },
+      "channels": {
+        "TSEC_REQUEST": "ch_new_tsec_request",
+        "TSEC_RESPONSE": "ch_new_tsec_response",
+        "QUOTATION_PAGES": "ch_quotation_pages",
+        "SALE_PAGES": "ch_sale_pages"
+      },
+      "storage": { 
+        "USER": "USER_DATA",
+        "TSEC": "tsec"
+      },
+      "apiCatalog": {
+        "contactDetails": {
+          "contactType": {
+            "EMAIL": "EMAIL",
+            "WORK_EMAIL": "WORK_EMAIL",
+            "FACEBOOK_EMAIL": "FACEBOOK_EMAIL",
+            "MOBILE_NUMBER": "MOBILE_NUMBER",
+            "PHONE_NUMBER": "PHONE_NUMBER",
+            "OFFICE_NUMBER": "OFFICE_NUMBER"
+          }
+        },
+        "customers": {
+          "documentType": {
+            "PASSPORT":"P",
+            "DNI":"L",
+            "RUC":"R",
+            "DIPLOMATIC":"D",
+            "FOREIGNERS":"E",
+            "MILITARY":"M",
+            "POLICE":"T"
+          }
+        }
+      }
+    }
+  }
+}
